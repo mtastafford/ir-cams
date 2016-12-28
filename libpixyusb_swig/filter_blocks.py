@@ -17,7 +17,7 @@ HIST=np.zeros(40).reshape(10,4) #USE THIS TO LOG THE LAST 10 TIMESTEPS, TO CALC 
 K=np.array([(0,0),(0,0),(0,0),(0,0)]) #Kalman Filter Placeholder
 H=np.array([(1,0,0,0),(0,0,1,0)]) #Identity matrix skeleton to transform state vector to position vector
 HT=H.transpose() #TRANSPOSE OF IDENTITY MATRIX
-R=np.array([(0.1,0.2),(0.2,0.1)])
+R=np.array([(0.01,0.02),(0.02,0.01)])
 I=np.zeros(16).reshape(4,4) #4x4 identity
 np.fill_diagonal(I,1) #Fill diagonal of I
 print ("Kalman Filter of Blob Data from Get Blocks")
