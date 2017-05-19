@@ -1,6 +1,0 @@
-print("TESTTESTESTESTOISJDFLKSJDFLSJDFLJSDFLKSJDFIUYHSLDIUFHSLDGHSLIDHGF")
-
-import get_blocks
-
-print("When does this come in?")
-

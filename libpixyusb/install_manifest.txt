@@ -1,3 +1,0 @@
-/usr/local/lib/libpixyusb.a
-/usr/local/include/pixy.h
-/usr/local/include/pixydefs.h
