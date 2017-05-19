@@ -1,17 +1,17 @@
+#include <ArduinoJson.h>
 #include <ESP8266httpUpdate.h> // For Server OTA
 #include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
-
 //needed for library
 #include <DNSServer.h>
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
-
 #include <SPI.h> 
 #include <Wire.h>
 #include "PixySPI_SS.h"
 #include <WebSocketsClient.h>
 
 uint16_t blocks;
+uint16_t old_blocks;
 
 PixySPI_SS pixy(D8);
 
@@ -62,8 +62,8 @@ void setup() {
     delay(6000);
     Serial.begin(9600);
     Serial.println("VR SYSTEM alpha V0.01");
-
-    // Initialize camera
+  
+  // Initialize camera
     pixy.init();
 
     byte mac[6];
@@ -96,29 +96,62 @@ webSocket.onEvent(webSocketEvent);
 
 void loop() {
   webSocket.loop();
-  static int i = 0;
-  int j;
-  char buf[32]; 
-  
-  // grab blocks!
+  old_blocks = blocks;
   blocks = pixy.getBlocks();
-  // If there are detect blocks, print them!
-  if (blocks)
-  {
-    i++;
-    
-    // do this (print) every 50 frames because printing every
-    // frame would bog down the Arduino
-    if (i%50==0)
-    {
-      sprintf(buf, "Detected %d:\n", blocks);
-      Serial.print(buf);
-      for (j=0; j<blocks; j++)
-      {
-        sprintf(buf, "  block %d: ", j);
-        Serial.print(buf); 
-        pixy.blocks[j].print();
-      }
-    }
+  counter += 1;
+//////////////////////////////////////////
+// Memory pool for JSON object tree.
+// Inside the brackets, 200 is the size of the pool in bytes.
+// If the JSON object is more complex, you need to increase that value.
+  StaticJsonBuffer<1424> jsonBuffer;
+// StaticJsonBuffer allocates memory on the stack, it can be
+// replaced by DynamicJsonBuffer which allocates in the heap.
+// It's simpler but less efficient.
+//
+// DynamicJsonBuffer  jsonBuffer;
+// Create the root of the object tree.
+//
+// It's a reference to the JsonObject, the actual bytes are inside the
+// JsonBuffer with all the other nodes of the object tree.
+// Memory is freed when jsonBuffer goes out of scope.
+  JsonObject& root = jsonBuffer.createObject();
+  
+// Add values in the object
+//
+// Most of the time, you can rely on the implicit casts.
+// In other case, you can do root.set<long>("time", 1351824120);  
+  root["sensor"] = "CAM";
+  root["frame"] = counter;
+  JsonArray& blobID = root.createNestedArray("blobID");
+  JsonArray& sig = root.createNestedArray("sig");
+  JsonArray& xloc = root.createNestedArray("xloc");
+  JsonArray& yloc = root.createNestedArray("yloc");
+  JsonArray& width = root.createNestedArray("width");
+  JsonArray& height = root.createNestedArray("height");
+///////////////////////////////////////////
+//Look for new Blocks & Add to Array root
+  if (blocks && (old_blocks != blocks))
+  { 
+      for (int j=0; j<blocks; j++)
+      {  
+      //if(pixy.blocks[j].width < 30 && pixy.blocks[j].height < 30){
+        blobID.add(j);
+        sig.add(pixy.blocks[j].signature);
+        xloc.add(pixy.blocks[j].x);
+        yloc.add(pixy.blocks[j].y);
+        width.add(pixy.blocks[j].width);
+        height.add(pixy.blocks[j].height);
+      //angle.add(pixy.blocks[j].angle);
+      //webSocket.sendBIN(root);
+      //}
+      } 
+      char buffer[255]; //Be sure your buffer is large enough to hold the string
+      root.printTo(buffer); //sizeof(buffer)); write the json object to the string
+      webSocket.sendTXT(buffer); //pass the string to websocket's function  
+      //root.prettyPrintTo(Serial);
   }  
+  
+  else {
+      delayMicroseconds(20);
+} 
 }
