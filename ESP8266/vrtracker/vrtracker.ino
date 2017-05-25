@@ -37,7 +37,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t lenght) {
                 Serial.printf("[WSc] Connected to url: %s\n",  payload);
         
           // send message to server when Connected
-        webSocket.sendTXT("Connected");
+        //webSocket.sendTXT("Connected");
             }
             break;
         case WStype_TEXT:
@@ -122,12 +122,7 @@ void loop() {
 // In other case, you can do root.set<long>("time", 1351824120);  
   root["sensor"] = "CAM";
   root["frame"] = counter;
-  JsonArray& blobID = root.createNestedArray("blobID");
-  JsonArray& sig = root.createNestedArray("sig");
-  JsonArray& xloc = root.createNestedArray("xloc");
-  JsonArray& yloc = root.createNestedArray("yloc");
-  JsonArray& width = root.createNestedArray("width");
-  JsonArray& height = root.createNestedArray("height");
+  JsonArray& blobs = root.createNestedArray("blobs");
 ///////////////////////////////////////////
 //Look for new Blocks & Add to Array root
   if (blocks && (old_blocks != blocks))
@@ -135,17 +130,15 @@ void loop() {
       for (int j=0; j<blocks; j++)
       {  
       //if(pixy.blocks[j].width < 30 && pixy.blocks[j].height < 30){
-        blobID.add(j);
-        sig.add(pixy.blocks[j].signature);
-        xloc.add(pixy.blocks[j].x);
-        yloc.add(pixy.blocks[j].y);
-        width.add(pixy.blocks[j].width);
-        height.add(pixy.blocks[j].height);
-      //angle.add(pixy.blocks[j].angle);
-      //webSocket.sendBIN(root);
+        JsonObject& data = blobs.createNestedObject();
+        data["sig"] = pixy.blocks[j].signature;
+        data["xloc"] = pixy.blocks[j].x;
+        data["yloc"] = pixy.blocks[j].y;
+        data["width"] = pixy.blocks[j].width;
+        data["height"] = pixy.blocks[j].height;
       //}
       } 
-      char buffer[255]; //Be sure your buffer is large enough to hold the string
+      char buffer[256]; //Be sure your buffer is large enough to hold the string
       root.printTo(buffer); //sizeof(buffer)); write the json object to the string
       webSocket.sendTXT(buffer); //pass the string to websocket's function  
       //root.prettyPrintTo(Serial);
