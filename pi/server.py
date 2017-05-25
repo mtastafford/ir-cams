@@ -1,5 +1,4 @@
 import json
-import numpy as np
 from websocket_server import WebsocketServer
 
 # Called for every client connecting (after handshake)
@@ -17,10 +16,8 @@ def message_received(client, server, message):
 	if len(message) > 400:
 		message = message[:400]+'..'
 	#print("Client(%d) said: %s" % (client['id'], message))
-        test = message;
-        obj = json.loads(test);
+        obj = json.loads(message);
         print(obj);
-        print(type(obj));
 
 PORT=8001
 server = WebsocketServer(PORT, host='0.0.0.0')

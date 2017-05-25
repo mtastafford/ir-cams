@@ -89,7 +89,7 @@ void setup() {
     Serial.println("My IP : " + WiFi.localIP().toString());
     Serial.println("Gateway IP : " + strIP);
 
-    webSocket.begin("192.168.1.8", 8001);
+    webSocket.begin("192.168.1.13", 8001);
     
 webSocket.onEvent(webSocketEvent); 
 }
