@@ -10,6 +10,7 @@
 #include "PixySPI_SS.h"
 #include <WebSocketsClient.h>
 
+String camID;
 uint16_t blocks;
 uint16_t old_blocks;
 
@@ -42,6 +43,7 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t lenght) {
             break;
         case WStype_TEXT:
             Serial.printf("[WSc] get text: %s\n", payload);
+            camID = payload;
 
       // send message to server
       // webSocket.sendTXT("message here");
@@ -120,7 +122,7 @@ void loop() {
 //
 // Most of the time, you can rely on the implicit casts.
 // In other case, you can do root.set<long>("time", 1351824120);  
-  root["sensor"] = "CAM";
+  root["sensor"] = camID;
   root["frame"] = counter;
   JsonArray& blobs = root.createNestedArray("blobs");
 ///////////////////////////////////////////
