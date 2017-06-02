@@ -10,7 +10,7 @@
 #include "PixySPI_SS.h"
 #include <WebSocketsClient.h>
 
-String camID;
+String* camID;
 uint16_t blocks;
 uint16_t old_blocks;
 
@@ -19,6 +19,7 @@ PixySPI_SS pixy(D8);
 int counter=0;
 char buf[10];
 unsigned long timedelay =0;
+String camera = "camera";
 
 String macadress = "";
 IPAddress ip;
@@ -36,15 +37,13 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t lenght) {
         case WStype_CONNECTED:
             {
                 Serial.printf("[WSc] Connected to url: %s\n",  payload);
-        
           // send message to server when Connected
         //webSocket.sendTXT("Connected");
             }
             break;
         case WStype_TEXT:
-            Serial.printf("[WSc] get text: %s\n", payload);
-            camID = payload;
-
+            //Serial.printf("[WSc] get text: %s\n", payload);
+            //camID = (payload);
       // send message to server
       // webSocket.sendTXT("message here");
             break;
@@ -75,8 +74,11 @@ void setup() {
         macadd[i] = (char)mac[i];
     }
     macadress = String(macadd[0],HEX) + String(macadd[1],HEX) + String(macadd[2],HEX) + String(macadd[3],HEX) + String(macadd[4],HEX) + String(macadd[5],HEX);
-    
 
+
+//
+// DynamicJsonBuffer  jsonBuffer;
+    
     WiFiManager wifiManager;
     //wifiConnectFailed = true; 
     //wifiManager.resetSettings();
@@ -91,7 +93,7 @@ void setup() {
     Serial.println("My IP : " + WiFi.localIP().toString());
     Serial.println("Gateway IP : " + strIP);
 
-    webSocket.begin("192.168.1.13", 8001);
+    webSocket.begin("192.168.1.11", 8001);
     
 webSocket.onEvent(webSocketEvent); 
 }
@@ -101,7 +103,7 @@ void loop() {
   old_blocks = blocks;
   blocks = pixy.getBlocks();
   counter += 1;
-//////////////////////////////////////////
+    //////////////////////////////////////////
 // Memory pool for JSON object tree.
 // Inside the brackets, 200 is the size of the pool in bytes.
 // If the JSON object is more complex, you need to increase that value.
@@ -109,8 +111,6 @@ void loop() {
 // StaticJsonBuffer allocates memory on the stack, it can be
 // replaced by DynamicJsonBuffer which allocates in the heap.
 // It's simpler but less efficient.
-//
-// DynamicJsonBuffer  jsonBuffer;
 // Create the root of the object tree.
 //
 // It's a reference to the JsonObject, the actual bytes are inside the
@@ -122,7 +122,7 @@ void loop() {
 //
 // Most of the time, you can rely on the implicit casts.
 // In other case, you can do root.set<long>("time", 1351824120);  
-  root["sensor"] = camID;
+  root["type"] = camera;
   root["frame"] = counter;
   JsonArray& blobs = root.createNestedArray("blobs");
 ///////////////////////////////////////////
@@ -140,7 +140,7 @@ void loop() {
         data["height"] = pixy.blocks[j].height;
       //}
       } 
-      char buffer[256]; //Be sure your buffer is large enough to hold the string
+      char buffer[1000]; //Be sure your buffer is large enough to hold the string
       root.printTo(buffer); //sizeof(buffer)); write the json object to the string
       webSocket.sendTXT(buffer); //pass the string to websocket's function  
       //root.prettyPrintTo(Serial);
