@@ -28,9 +28,9 @@ class websocketserver:
    message = message[:500]+'..'
   obj = json.loads(message);
   #set client type in cams{} to match client ID
-  self.cams[client['id']]=obj['type']
   ##check who sent message based on 'type' in JSON data (camera, beacon, etc.) then parse for client type
   if 'camera' in obj.values(): #if message from camera, it is found blobs.
+   self.cams[client['id']]={}
    found = np.zeros(shape=(len(obj['blobs']),5), dtype=int)
    #print(self.tAreas)
    ##//TO DO -- MAKE 4D ARRAY TO ACCOUNT FOR MULTIPLE CAMERAS//##
@@ -93,6 +93,13 @@ class websocketserver:
      self.nBlobs+=1
      self.tAreas=np.append(self.tAreas,[[self.nBlobs,(found[j,0]-10),(found[j,0]+10),(found[j,1]-10),(found[j,1]+10),0]],axis=0)
      found[j,4]=1
+   ############update dictionary for this camera in master blob list (holds all cameras data)
+   for a in range(0,np.count_nonzero(self.tAreas[:,0])): #########cycle through all tracked areas 'a'
+    #create new tracked blob in cam list for client id
+    self.cams[client['id']][a]={}
+    self.cams[client['id']][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
+    self.cams[client['id']][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
+    print self.cams
 
  def __init__(self, host='0.0.0.0'):
   self.server = WebsocketServer(self.port, host)
