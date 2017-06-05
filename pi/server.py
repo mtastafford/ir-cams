@@ -30,6 +30,7 @@ class websocketserver:
   #set client type in cams{} to match client ID
   ##check who sent message based on 'type' in JSON data (camera, beacon, etc.) then parse for client type
   if 'camera' in obj.values(): #if message from camera, it is found blobs.
+   self.cams.clear()
    self.cams[client['id']]={}
    found = np.zeros(shape=(len(obj['blobs']),5), dtype=int)
    #print(self.tAreas)
@@ -45,8 +46,8 @@ class websocketserver:
     found[j,2]=obj['blobs'][j]['width']
     found[j,3]=obj['blobs'][j]['height']
     found[j,4]=0 ###0 if unmatched, 1 if matched
-   print found
-   print self.tAreas
+   #print found
+   #print self.tAreas
    #if len(obj['blobs'])>=(np.count_nonzero(self.tAreas[:,0])):
    #rint("CASE 1")
    #print len(obj['blobs'])
@@ -96,10 +97,11 @@ class websocketserver:
    ############update dictionary for this camera in master blob list (holds all cameras data)
    for a in range(0,np.count_nonzero(self.tAreas[:,0])): #########cycle through all tracked areas 'a'
     #create new tracked blob in cam list for client id
-    self.cams[client['id']][a]={}
-    self.cams[client['id']][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
-    self.cams[client['id']][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
-    print self.cams
+    if self.tAreas[a,5]==0:
+     self.cams[client['id']][a]={}
+     self.cams[client['id']][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
+     self.cams[client['id']][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
+   print self.cams
 
  def __init__(self, host='0.0.0.0'):
   self.server = WebsocketServer(self.port, host)
