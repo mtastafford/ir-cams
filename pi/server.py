@@ -6,6 +6,7 @@ from websocket_server import WebsocketServer
 
 
 class websocketserver:
+ numcams=0
  nBlobs = 0
  cams = {}
  beacons = {}
@@ -26,12 +27,31 @@ class websocketserver:
  def message_received(self, client, server, message):
   if len(message) > 1000:
    message = message[:500]+'..'
-  obj = json.loads(message);
+  obj = json.loads(message)
   #set client type in cams{} to match client ID
   ##check who sent message based on 'type' in JSON data (camera, beacon, etc.) then parse for client type
-  if 'camera' in obj.values(): #if message from camera, it is found blobs.
-   self.cams.clear()
-   self.cams[client['id']]={}
+  if 'camera' in obj.values():
+   self.numcams +=1
+   self.cams[self.numcams]={}
+   self.cams[self.numcams]['calibrated']=0
+   self.cams[self.numcams]['blobs']={}
+
+  if 'point2D' in obj.values(): #if message from camera, it is found blobs.
+   ##check for calibration if poitn received
+   if self.cams[self.numcams]['calibrated']==0:
+    calibPts = np.array([[0,0,1],[1,0,1],[1,1,1],[0,1,1],[-1,1,1],[-1,0,1],[-1,-1,1],[0,-1,1]])
+    Points2D = np.zeros(shape=(8,len(self.cams)*2))
+    for i in range(0,8):
+    #user to physically move beacon to specific locations to calibrate room
+     print obj
+     print 'Move beacon to %d' %calibPts[i,0], 'm, %d' %calibPts[i,1], 'm, %d' % calibPts[i,2], 'm location and press enter to store 2d point'
+     raw_input("....")
+     Points2D[i,1] = obj['blobs'][0]['yloc']
+     Points2D[i,0] = obj['blobs'][0]['xloc']
+     print Points2D
+     self.cams[self.numcams]['calibrated']=1 
+   for i in self.cams:
+    self.cams[i]['blobs'].clear()
    found = np.zeros(shape=(len(obj['blobs']),5), dtype=int)
    #print(self.tAreas)
    ##//TO DO -- MAKE 4D ARRAY TO ACCOUNT FOR MULTIPLE CAMERAS//##
@@ -98,9 +118,9 @@ class websocketserver:
    for a in range(0,np.count_nonzero(self.tAreas[:,0])): #########cycle through all tracked areas 'a'
     #create new tracked blob in cam list for client id
     if self.tAreas[a,5]==0:
-     self.cams[client['id']][a]={}
-     self.cams[client['id']][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
-     self.cams[client['id']][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
+     self.cams[client['id']]['blobs'][a]={}
+     self.cams[client['id']]['blobs'][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
+     self.cams[client['id']]['blobs'][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
    print self.cams
 
  def __init__(self, host='0.0.0.0'):
