@@ -1,0 +1,11 @@
+Potential cmuCam5 lens distortion parameters (thanks to VR tracker project by Jules Thullier)
+
+k1 = -0.45977769
+k2 = 0.29782977
+p1 = -0.00162724
+p2 = 0.00046035
+k3 = -0.16351777
+
+see OpenCV doc here: http://docs.opencv.org/3.0-beta/modules/calib3d/doc/camera_calibration_and_3d_reconstruction.html#bool%20solvePnP(InputArray%20objectPoints,%20InputArray%20imagePoints,%20InputArray%20cameraMatrix,%20InputArray%20distCoeffs,%20OutputArray%20rvec,%20OutputArray%20tvec,%20bool%20useExtrinsicGuess,%20int%20flags)
+
+
