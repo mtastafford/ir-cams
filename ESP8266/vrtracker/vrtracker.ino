@@ -93,9 +93,15 @@ void setup() {
     Serial.println("My IP : " + WiFi.localIP().toString());
     Serial.println("Gateway IP : " + strIP);
 
+    StaticJsonBuffer<200> jsonBuffer;
     webSocket.begin("192.168.1.11", 8001);
+    JsonObject& clientType =jsonBuffer.createObject();
+    clientType["type"] = camera; //make simple JSON object containing client type
+    char buffer[10];
+    clientType.printTo(buffer);
     
 webSocket.onEvent(webSocketEvent); 
+webSocket.sendTXT(buffer); //send JSON 
 }
 
 void loop() {
