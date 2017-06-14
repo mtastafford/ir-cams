@@ -12,6 +12,9 @@ class websocketserver:
  beacons = {}
  users = {}
  port = 8001
+ calibCount = 0
+ Points2D = np.float64([0.0,0.0])
+ ticker = 0
 
  #create 3D array of tracked areas (rows Area ID cols: xcen ycen width height)
  tAreas = np.zeros((1,6), dtype=int) #for now, track 10 areas. ID,xl, xr, yb, yt, pattern?
@@ -32,31 +35,66 @@ class websocketserver:
   ##check who sent message based on 'type' in JSON data (camera, beacon, etc.) then parse for client type
   if 'camera' in obj.values():
    self.numcams +=1
-   self.cams[self.numcams]={}
-   self.cams[self.numcams]['calibrated']=0
-   self.cams[self.numcams]['blobs']={}
+   self.cams[client['id']]={}
+   self.cams[client['id']]['calibrated']=0
+   self.cams[client['id']]['blobs']={}
 
   if 'point2D' in obj.values(): #if message from camera, it is found blobs.
-   ##check for calibration if poitn received
-   if self.cams[self.numcams]['calibrated']==0:
-    calibPts = np.array([[0,0,1],[1,0,1],[1,1,1],[0,1,1],[-1,1,1],[-1,0,1],[-1,-1,1],[0,-1,1]])
-    Points2D = np.zeros(shape=(8,len(self.cams)*2))
-    for i in range(0,8):
+   ####################CALIBRATE CAMERA IF NOT DONE YET######################################## 
+   if self.cams[client['id']]['calibrated']==0:   ##check for calibration if point received
+    calibPts = np.float64([[0,0,1],[1,0,1],[1,1,1],[0,1,1],[-1,1,1],[-1,0,1],[-1,-1,1],[0,-1,1],[1,-1,1]])
     #user to physically move beacon to specific locations to calibrate room
-     print obj
-     print 'Move beacon to %d' %calibPts[i,0], 'm, %d' %calibPts[i,1], 'm, %d' % calibPts[i,2], 'm location and press enter to store 2d point'
-     raw_input("....")
-     Points2D[i,1] = obj['blobs'][0]['yloc']
-     Points2D[i,0] = obj['blobs'][0]['xloc']
-     print Points2D
-     self.cams[self.numcams]['calibrated']=1 
+    if self.calibCount <= 0:
+     if self.ticker <= 0:
+      print "Camera Calibration X-Y points"
+      self.Points2D = np.zeros(shape=(9,len(self.cams)*2))
+      print self.Points2D
+      print 'Move beacon to %d' %calibPts[self.calibCount,0], 'm, %d' %calibPts[self.calibCount,1], 'm, %d' % calibPts[self.calibCount,2], 'm location and press enter to store 2d point'
+      raw_input("....")
+      self.ticker += 1
+    self.ticker += 1
+    print self.ticker
+    if self.ticker >= 500: 
+     self.calibCount += 1
+     self.ticker = 0
+
+    if self.calibCount >= 9:
+     self.Points2D[self.calibCount-1,0] = obj['blobs'][0]['xloc']
+     self.Points2D[self.calibCount-1,1] = obj['blobs'][0]['yloc']
+     print self.Points2D
+     print calibPts
+     cameraMatrix = np.float64([[247.9139798, 0., 155.30251177], [0., 248.19822494, 100.74688813], [0., 0., 1.]])
+     distCoeff = np.float64([-0.45977769, 0.29782977, -0.00162724, 0.00046035])
+     ret, rvec, tvec = cv2.solvePnP(calibPts,self.Points2D,cameraMatrix,distCoeff)
+     rotM_cam =	cv2.Rodrigues(rvec)[0]
+     self.cams[client['id']]['position'] = -np.matrix(rotM_cam).T * np.matrix(tvec)
+     self.cams[client['id']]['calibrated']=1 
+     self.calibCount = 0
+     print self.cams[self.numcams]
+
+    if self.calibCount >= 1 and self.calibCount <= 8:
+     if self.ticker <= 0 or self.ticker >= 500:
+      self.Points2D[self.calibCount-1,0] = obj['blobs'][0]['xloc']
+      self.Points2D[self.calibCount-1,1] = obj['blobs'][0]['yloc']
+      print self.Points2D
+      print 'Move beacon to %d' %calibPts[self.calibCount,0], 'm, %d' %calibPts[self.calibCount,1], 'm, %d' % calibPts[self.calibCount,2], 'm location and press enter to store 2d point'
+      raw_input("....")
+      self.ticker += 1
+      print self.ticker 
+      if self.ticker >= 500:
+       self.calibCount += 1
+       self.ticker = 0
+     self.ticker += 1
+     print self.ticker
+  ####################################################################################
    for i in self.cams:
     self.cams[i]['blobs'].clear()
    found = np.zeros(shape=(len(obj['blobs']),5), dtype=int)
-   #print(self.tAreas)
-   ##//TO DO -- MAKE 4D ARRAY TO ACCOUNT FOR MULTIPLE CAMERAS//##
-   #####################################################################################
-   #make n-dim array to store found blobs based on how many unique blobs were sent for n			
+  #####################################################################################
+  #print(self.tAreas)
+  ##//TO DO -- MAKE 4D ARRAY TO ACCOUNT FOR MULTIPLE CAMERAS//##
+  #####################################################################################
+  #make n-dim array to store found blobs based on how many unique blobs were sent for n			
    for j in range(0,len(obj['blobs'])):
     if j>len(obj['blobs']):
      break
@@ -66,62 +104,54 @@ class websocketserver:
     found[j,2]=obj['blobs'][j]['width']
     found[j,3]=obj['blobs'][j]['height']
     found[j,4]=0 ###0 if unmatched, 1 if matched
-   #print found
-   #print self.tAreas
-   #if len(obj['blobs'])>=(np.count_nonzero(self.tAreas[:,0])):
-   #rint("CASE 1")
-   #print len(obj['blobs'])
-   #print found
-   #print('Currently tracking %d areas' % np.count_nonzero(self.tAreas[:,0]), ' and found %d new blobs' % len(obj['blobs']))
-   #test if found blob is within a tracked area				
-   if not np.any(self.tAreas[0,:]): #check if tAreas list is empty
-    #if empty, add all blobs to tracked areas
-    #print("Adding all found blobs to empty list")
-    for i in range(0,len(obj['blobs'])): #all all found blobs j to tAreas i
-     self.nBlobs+=1
-     self.tAreas=np.append(self.tAreas,[[self.nBlobs,found[i,0]-10,found[i,0]+10,found[i,1]-10,found[i,1]+10,0]],axis=0)
-     #add signal string in here later
-    self.tAreas=np.delete(self.tAreas,0,0) ##delete initial line of zeros from tracked areas.
-   ##################################################
-   for i in range(0,np.count_nonzero(self.tAreas[:,0])): #testing each area i (replace 9 with np.count_nonzero(self.tAreas[:,0]) later)
-    #print('Checking tracked region: ' , self.tAreas[i,:]) #print x range being tested
-    ####check if area i has a match in blob j
-    self.tAreas[i,5]+=1
-    for j in range(0,len(obj['blobs'])): #test against found blobs j
-     #print("Against found blob: ", found[j,:]) #print found x location being tested
-     if (self.tAreas[i,1]<found[j,0]<self.tAreas[i,2] and self.tAreas[i,3]<found[j,1]<self.tAreas[i,4] and found[j,4] == 0): #if area matches unmatched found blob
-      #print (self.tAreas[i,1],found[j,0],self.tAreas[i,2]) #print successful match range
-      #print("Blob %d" % j, " is inside tracked area %d" % i) #declare match found
-      #print("Updating region defining tracked area %d" %i)
-      self.tAreas[i,1]=found[j,0]-10
-      self.tAreas[i,2]=found[j,0]+10
-      self.tAreas[i,3]=found[j,1]-10
-      self.tAreas[i,4]=found[j,1]+10
-      self.tAreas[i,5]=0
-      found[j,4]=1 #mark found blob as matched
-      break
-   for dlt in range(1,np.count_nonzero(self.tAreas[:,0])+1):
-    if self.tAreas[np.count_nonzero(self.tAreas[:,0])-dlt,5]>=100: ##if deleter count >= 10, delete area
-     #print("Row %d should be getting deleted" % i)
-     self.tAreas = np.delete(self.tAreas,np.count_nonzero(self.tAreas[:,0])-i-1,0)
-   #print(self.tAreas)
-   #print(found)
-   #print("Found %d blobs" % len(obj['blobs']))
-   #############add unmatched blobs from found list to end of tracked areas, after deleting areas to be removed.
-   for j in range(0,len(obj['blobs'])):
-    if found[j,4]==0:
-     #print("Adding apparently new blob %d" % j, " to tracked areas list")
-     self.nBlobs+=1
-     self.tAreas=np.append(self.tAreas,[[self.nBlobs,(found[j,0]-10),(found[j,0]+10),(found[j,1]-10),(found[j,1]+10),0]],axis=0)
-     found[j,4]=1
-   ############update dictionary for this camera in master blob list (holds all cameras data)
-   for a in range(0,np.count_nonzero(self.tAreas[:,0])): #########cycle through all tracked areas 'a'
-    #create new tracked blob in cam list for client id
-    if self.tAreas[a,5]==0:
-     self.cams[client['id']]['blobs'][a]={}
-     self.cams[client['id']]['blobs'][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
-     self.cams[client['id']]['blobs'][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
-   print self.cams
+   #################################IF CAMERA IS CALIRATED, TRACK BLOBS###############
+   if self.cams[client['id']]['calibrated'] == 1: ####ONLY RUNS IF CAMERA SENDING MESSAGE HAS BEEN CALIBRATED###
+    if not np.any(self.tAreas[0,:]): #check if tAreas list is empty
+     for i in range(0,len(obj['blobs'])): #add all found blobs j to tAreas i
+      self.nBlobs+=1
+      self.tAreas=np.append(self.tAreas,[[self.nBlobs,found[i,0]-10,found[i,0]+10,found[i,1]-10,found[i,1]+10,0]],axis=0)
+      #add signal string in here later
+     self.tAreas=np.delete(self.tAreas,0,0) ##delete initial line of zeros from tracked areas.
+    ##################################################
+    for i in range(0,np.count_nonzero(self.tAreas[:,0])): #testing each area i (replace 9 with np.count_nonzero(self.tAreas[:,0]) later)
+     #print('Checking tracked region: ' , self.tAreas[i,:]) #print x range being tested
+     ####check if area i has a match in blob j
+     self.tAreas[i,5]+=1
+     for j in range(0,len(obj['blobs'])): #test against found blobs j
+      #print("Against found blob: ", found[j,:]) #print found x location being tested
+      if (self.tAreas[i,1]<found[j,0]<self.tAreas[i,2] and self.tAreas[i,3]<found[j,1]<self.tAreas[i,4] and found[j,4] == 0): #if area matches unmatched found blob
+       #print (self.tAreas[i,1],found[j,0],self.tAreas[i,2]) #print successful match range
+       #print("Blob %d" % j, " is inside tracked area %d" % i) #declare match found
+       #print("Updating region defining tracked area %d" %i)
+       self.tAreas[i,1]=found[j,0]-10
+       self.tAreas[i,2]=found[j,0]+10
+       self.tAreas[i,3]=found[j,1]-10
+       self.tAreas[i,4]=found[j,1]+10
+       self.tAreas[i,5]=0
+       found[j,4]=1 #mark found blob as matched
+       break
+    for dlt in range(1,np.count_nonzero(self.tAreas[:,0])+1):
+     if self.tAreas[np.count_nonzero(self.tAreas[:,0])-dlt,5]>=100: ##if deleter count >= 10, delete area
+      #print("Row %d should be getting deleted" % i)
+      self.tAreas = np.delete(self.tAreas,np.count_nonzero(self.tAreas[:,0])-i-1,0)
+    #print(self.tAreas)
+    #print(found)
+    #print("Found %d blobs" % len(obj['blobs']))
+    #############add unmatched blobs from found list to end of tracked areas, after deleting areas to be removed.
+    for j in range(0,len(obj['blobs'])):
+     if found[j,4]==0:
+      #print("Adding apparently new blob %d" % j, " to tracked areas list")
+      self.nBlobs+=1
+      self.tAreas=np.append(self.tAreas,[[self.nBlobs,(found[j,0]-10),(found[j,0]+10),(found[j,1]-10),(found[j,1]+10),0]],axis=0)
+      found[j,4]=1
+    ############update dictionary for this camera in master blob list (holds all cameras data)
+    for a in range(0,np.count_nonzero(self.tAreas[:,0])): #########cycle through all tracked areas 'a'
+     #create new tracked blob in cam list for client id
+     if self.tAreas[a,5]==0:
+      self.cams[client['id']]['blobs'][a]={}
+      self.cams[client['id']]['blobs'][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
+      self.cams[client['id']]['blobs'][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
+    print self.cams 
 
  def __init__(self, host='0.0.0.0'):
   self.server = WebsocketServer(self.port, host)

@@ -2,6 +2,3 @@
 import server
 
 myserver = server.websocketserver('0.0.0.0')
-
-print tAreas
-
