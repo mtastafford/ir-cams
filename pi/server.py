@@ -36,9 +36,17 @@ class websocketserver:
   if 'camera' in obj.values():
    self.numcams +=1
    self.cams[client['id']]={}
+   self.cams[client['id']]['mac']=obj['id']
    self.cams[client['id']]['calibrated']=0
    self.cams[client['id']]['blobs']={}
-
+   print self.cams
+   ###CHECK IF CAMERA HAS BEEN CALIBRATED PREVIOUSLY###
+   calbFile = open("calbList.json", "r")
+   checker=json.loads(calbFile.read())
+   print checker
+   if self.cams[client['id']]['mac'] in checker.values():
+    self.cams[client['id']]['calibrated']=1
+   ###check for matching MAC address
   if 'point2D' in obj.values(): #if message from camera, it is found blobs.
    ####################CALIBRATE CAMERA IF NOT DONE YET######################################## 
    if self.cams[client['id']]['calibrated']==0:   ##check for calibration if point received
@@ -67,9 +75,14 @@ class websocketserver:
      distCoeff = np.float64([-0.45977769, 0.29782977, -0.00162724, 0.00046035])
      ret, rvec, tvec = cv2.solvePnP(calibPts,self.Points2D,cameraMatrix,distCoeff)
      rotM_cam =	cv2.Rodrigues(rvec)[0]
-     self.cams[client['id']]['position'] = -np.matrix(rotM_cam).T * np.matrix(tvec)
+     pose = -np.matrix(rotM_cam).T * np.matrix(tvec)
+     self.cams[client['id']]['X'] = str(pose[0,0])
+     self.cams[client['id']]['Y'] = str(pose[1,0])
+     self.cams[client['id']]['Z'] = str(pose[2,0])
      self.cams[client['id']]['calibrated']=1 
      self.calibCount = 0
+     with open('calbList.json', 'w') as outfile:
+      json.dump(self.cams[self.numcams], outfile)
      print self.cams[self.numcams]
 
     if self.calibCount >= 1 and self.calibCount <= 8:
