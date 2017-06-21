@@ -19,7 +19,6 @@ PixySPI_SS pixy(D8);
 int counter=0;
 char buf[10];
 unsigned long timedelay =0;
-String camera = "camera";
 
 String macadress = "";
 IPAddress ip;
@@ -37,6 +36,12 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t lenght) {
         case WStype_CONNECTED:
             {
                 Serial.printf("[WSc] Connected to url: %s\n",  payload);
+                StaticJsonBuffer<200> jsonBuffer;
+                JsonObject& clientType =jsonBuffer.createObject();
+                clientType["type"] = String("camera"); //make simple JSON object containing client type
+                char buffer[100];
+                clientType.printTo(buffer);
+                webSocket.sendTXT(buffer); //send JSON 
           // send message to server when Connected
         //webSocket.sendTXT("Connected");
             }
@@ -93,15 +98,8 @@ void setup() {
     Serial.println("My IP : " + WiFi.localIP().toString());
     Serial.println("Gateway IP : " + strIP);
 
-    StaticJsonBuffer<200> jsonBuffer;
-    webSocket.begin("192.168.1.11", 8001);
-    JsonObject& clientType =jsonBuffer.createObject();
-    clientType["type"] = camera; //make simple JSON object containing client type
-    char buffer[10];
-    clientType.printTo(buffer);
-    
-webSocket.onEvent(webSocketEvent); 
-webSocket.sendTXT(buffer); //send JSON 
+    webSocket.begin("192.168.1.2", 8001);
+    webSocket.onEvent(webSocketEvent); 
 }
 
 void loop() {
@@ -128,7 +126,7 @@ void loop() {
 //
 // Most of the time, you can rely on the implicit casts.
 // In other case, you can do root.set<long>("time", 1351824120);  
-  root["type"] = camera;
+  root["type"] = String("point2D");
   root["frame"] = counter;
   JsonArray& blobs = root.createNestedArray("blobs");
 ///////////////////////////////////////////
