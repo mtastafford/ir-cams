@@ -45,24 +45,7 @@ class websocketserver:
    checker=json.loads(calbFile.read())
    print checker
    if self.cams[client['id']]['mac'] in checker.values():
-    print "Found Calibrated Camera"
-    self.cams[client['id']]['X'] = checker['X']
-    self.cams[client['id']]['Y'] = checker['Y']
-    self.cams[client['id']]['Z'] = checker['Z']
-    self.cams[client['id']]['pM0']=checker['pM0']
-    self.cams[client['id']]['pM1']=checker['pM1']
-    self.cams[client['id']]['pM2']=checker['pM2']
-    self.cams[client['id']]['pM3']=checker['pM3']
-    self.cams[client['id']]['pM4']=checker['pM4']
-    self.cams[client['id']]['pM5']=checker['pM5']
-    self.cams[client['id']]['pM6']=checker['pM6']
-    self.cams[client['id']]['pM7']=checker['pM7']
-    self.cams[client['id']]['pM8']=checker['pM8']
-    self.cams[client['id']]['pM9']=checker['pM9']
-    self.cams[client['id']]['pM10']=checker['pM10']
-    self.cams[client['id']]['pM11']=checker['pM11']    
     self.cams[client['id']]['calibrated']=1
-   ###check for matching MAC address
   if 'point2D' in obj.values(): #if message from camera, it is found blobs.
    ####################CALIBRATE CAMERA IF NOT DONE YET######################################## 
    if self.cams[client['id']]['calibrated']==0:   ##check for calibration if point received
@@ -91,30 +74,10 @@ class websocketserver:
      distCoeff = np.float64([-0.45977769, 0.29782977, -0.00162724, 0.00046035])
      ret, rvec, tvec = cv2.solvePnP(calibPts,self.Points2D,cameraMatrix,distCoeff)
      rotM_cam =	cv2.Rodrigues(rvec)[0]
-     pose = -np.matrix(rotM_cam).T * np.matrix(tvec)
-     camMatrix = np.append(cv2.Rodrigues(rvec)[0], tvec, 1)
-     projectionMatrix = np.dot(cameraMatrix, camMatrix)
-     self.cams[client['id']]['X'] = str(pose[0,0])
-     self.cams[client['id']]['Y'] = str(pose[1,0])
-     self.cams[client['id']]['Z'] = str(pose[2,0])
-     self.cams[client['id']]['pM0']=str(projectionMatrix[0,0])
-     self.cams[client['id']]['pM1']=str(projectionMatrix[1,0])
-     self.cams[client['id']]['pM2']=str(projectionMatrix[2,0])
-     self.cams[client['id']]['pM3']=str(projectionMatrix[0,1])
-     self.cams[client['id']]['pM4']=str(projectionMatrix[1,1])
-     self.cams[client['id']]['pM5']=str(projectionMatrix[2,1])
-     self.cams[client['id']]['pM6']=str(projectionMatrix[0,2])
-     self.cams[client['id']]['pM7']=str(projectionMatrix[1,2])
-     self.cams[client['id']]['pM8']=str(projectionMatrix[2,2])
-     self.cams[client['id']]['pM9']=str(projectionMatrix[0,3])
-     self.cams[client['id']]['pM10']=str(projectionMatrix[1,3])
-     self.cams[client['id']]['pM11']=str(projectionMatrix[2,3])
-
+     self.cams[client['id']]['position'] = -np.matrix(rotM_cam).T * np.matrix(tvec)
      self.cams[client['id']]['calibrated']=1 
      self.calibCount = 0
-     with open('calbList.json', 'w') as outfile:
-      json.dump(self.cams[client['id']], outfile)
-     print "Calibrated!"
+     print self.cams[self.numcams]
 
     if self.calibCount >= 1 and self.calibCount <= 8:
      if self.ticker <= 0 or self.ticker >= 500:
@@ -195,11 +158,7 @@ class websocketserver:
       self.cams[client['id']]['blobs'][a]={}
       self.cams[client['id']]['blobs'][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
       self.cams[client['id']]['blobs'][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
-    print self.cams[client['id']]['blobs']
-    if len(self.cams)>=2:
-     print "Trying to triangulate 3d points"
-    else:
-     print "Two cameras required for triangulation"
+    print self.cams 
 
  def __init__(self, host='0.0.0.0'):
   self.server = WebsocketServer(self.port, host)
