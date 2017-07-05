@@ -98,7 +98,7 @@ void setup() {
     Serial.println("My IP : " + WiFi.localIP().toString());
     Serial.println("Gateway IP : " + strIP);
 
-    webSocket.begin("192.168.1.2", 8001);
+    webSocket.begin("vr.gateway", 8001);
     webSocket.onEvent(webSocketEvent); 
 }
 
