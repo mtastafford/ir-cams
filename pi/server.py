@@ -15,6 +15,8 @@ class websocketserver:
  calibCount = 0
  Points2D = np.float64([0.0,0.0])
  ticker = 0
+ ptsCam1 = np.zeros(shape=(2,1), dtype=float)
+ ptsCam2 = np.zeros(shape=(2,1), dtype=float)
 
  #create 3D array of tracked areas (rows Area ID cols: xcen ycen width height)
  tAreas = np.zeros((1,6), dtype=int) #for now, track 10 areas. ID,xl, xr, yb, yt, pattern?
@@ -153,79 +155,32 @@ class websocketserver:
     found[j,4]=0 ###0 if unmatched, 1 if matched
    #################################IF CAMERA IS CALIRATED, TRACK BLOBS###############
    if self.cams[client['id']]['calibrated'] == 1: ####ONLY RUNS IF CAMERA SENDING MESSAGE HAS BEEN CALIBRATED###
-    if not np.any(self.tAreas[0,:]): #check if tAreas list is empty
-     for i in range(0,len(obj['blobs'])): #add all found blobs j to tAreas i
-      self.nBlobs+=1
-      self.tAreas=np.append(self.tAreas,[[self.nBlobs,found[i,0]-10,found[i,0]+10,found[i,1]-10,found[i,1]+10,0]],axis=0)
-      #add signal string in here later
-     self.tAreas=np.delete(self.tAreas,0,0) ##delete initial line of zeros from tracked areas.
-    ##################################################
-    for i in range(0,np.count_nonzero(self.tAreas[:,0])): #testing each area i (replace 9 with np.count_nonzero(self.tAreas[:,0]) later)
-     #print('Checking tracked region: ' , self.tAreas[i,:]) #print x range being tested
-     ####check if area i has a match in blob j
-     self.tAreas[i,5]+=1
-     for j in range(0,len(obj['blobs'])): #test against found blobs j
-      #print("Against found blob: ", found[j,:]) #print found x location being tested
-      if (self.tAreas[i,1]<found[j,0]<self.tAreas[i,2] and self.tAreas[i,3]<found[j,1]<self.tAreas[i,4] and found[j,4] == 0): #if area matches unmatched found blob
-       #print (self.tAreas[i,1],found[j,0],self.tAreas[i,2]) #print successful match range
-       #print("Blob %d" % j, " is inside tracked area %d" % i) #declare match found
-       #print("Updating region defining tracked area %d" %i)
-       self.tAreas[i,1]=found[j,0]-10
-       self.tAreas[i,2]=found[j,0]+10
-       self.tAreas[i,3]=found[j,1]-10
-       self.tAreas[i,4]=found[j,1]+10
-       self.tAreas[i,5]=0
-       found[j,4]=1 #mark found blob as matched
-       break
-    for dlt in range(1,np.count_nonzero(self.tAreas[:,0])+1):
-     if self.tAreas[np.count_nonzero(self.tAreas[:,0])-dlt,5]>=100: ##if deleter count >= 10, delete area
-      #print("Row %d should be getting deleted" % i)
-      self.tAreas = np.delete(self.tAreas,np.count_nonzero(self.tAreas[:,0])-i-1,0)
-    #print(self.tAreas)
-    #print(found)
-    #print("Found %d blobs" % len(obj['blobs']))
-    #############add unmatched blobs from found list to end of tracked areas, after deleting areas to be removed.
-    for j in range(0,len(obj['blobs'])):
-     if found[j,4]==0:
-      #print("Adding apparently new blob %d" % j, " to tracked areas list")
-      self.nBlobs+=1
-      self.tAreas=np.append(self.tAreas,[[self.nBlobs,(found[j,0]-10),(found[j,0]+10),(found[j,1]-10),(found[j,1]+10),0]],axis=0)
-      found[j,4]=1
-    ############update dictionary for this camera in master blob list (holds all cameras data)
-    for a in range(0,np.count_nonzero(self.tAreas[:,0])): #########cycle through all tracked areas 'a'
-     #create new tracked blob in cam list for client id
-     if self.tAreas[a,5]==0:
-      self.cams[client['id']]['blobs'][a]={}
-      self.cams[client['id']]['blobs'][a]['xloc']=str((self.tAreas[a,1]+self.tAreas[a,2])/2)
-      self.cams[client['id']]['blobs'][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
+    for i in range(0,len(obj['blobs'])): #add all found blobs i to camera blobs
+     self.cams[client['id']]['blobs'][i]={}
+     self.cams[client['id']]['blobs'][i]['xloc']=obj['blobs'][i]['xloc']
+     self.cams[client['id']]['blobs'][i]['yloc']=obj['blobs'][i]['yloc']
     print self.cams[client['id']]['blobs']
     if len(self.cams)>=2:
      print "The server thinks there are %i cameras" %len(self.cams)
      print "Trying to triangulate 3d points"
      pMat1=np.float64([[self.cams[1]['pM0'],self.cams[1]['pM1'],self.cams[1]['pM2'],self.cams[1]['pM3']],[self.cams[1]['pM4'],self.cams[1]['pM5'],self.cams[1]['pM6'],self.cams[1]['pM7']],[self.cams[1]['pM8'],self.cams[1]['pM9'],self.cams[1]['pM10'],self.cams[1]['pM11']]])
      pMat2=np.float64([[self.cams[2]['pM0'],self.cams[2]['pM1'],self.cams[2]['pM2'],self.cams[2]['pM3']],[self.cams[2]['pM4'],self.cams[2]['pM5'],self.cams[2]['pM6'],self.cams[2]['pM7']],[self.cams[2]['pM8'],self.cams[2]['pM9'],self.cams[2]['pM10'],self.cams[2]['pM11']]])  
-     print pMat1
-     #print pMat2
-     ptsCam1 = np.zeros(shape=(1,2))
-     print ptsCam1
-     ptsCam2 = np.zeros(shape=(1,2))
-     print ptsCam2
      if self.cams[client['id']]['id'] is 1:
-      for a in range(0,len(self.cams[client['id']]['blobs'])):
-       ptsCam1[a,0] = self.cams[client['id']]['blobs'][a]['xloc']
-       ptsCam1[a,1] = self.cams[client['id']]['blobs'][a]['yloc']
-      print ptsCam1
+      #for a in range(0,len(self.cams[client['id']]['blobs'])):
+      self.ptsCam1[0,0] = self.cams[client['id']]['blobs'][0]['xloc']
+      self.ptsCam1[1,0] = self.cams[client['id']]['blobs'][0]['yloc']
+      print self.ptsCam1
       print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!CLIENT ID 1 ABOVE"
      if self.cams[client['id']]['id'] is 2:
-      for a in range(0,len(self.cams[client['id']]['blobs'])):
-        ptsCam2[a,0] = self.cams[client['id']]['blobs'][a]['xloc']
-        ptsCam2[a,1] = self.cams[client['id']]['blobs'][a]['yloc']
-      print ptsCam2
+      #for a in range(0,len(self.cams[client['id']]['blobs'])):
+      self.ptsCam2[0,0] = self.cams[client['id']]['blobs'][0]['xloc']
+      self.ptsCam2[1,0] = self.cams[client['id']]['blobs'][0]['yloc']
+      print self.ptsCam2
       print "CLIENT ID 2 ABOVE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
-#     if np.any(ptsCam1) and np.any(ptsCam2):
-#      print "what!?"
-#      points3d = cv2.triangulatePoints(pMat1, pMat2, ptsCam1, ptsCam2)
-#      print points3d
+     if np.any(self.ptsCam1) and np.any(self.ptsCam2):
+      print "TRIANGULATING"
+      points3d = cv2.triangulatePoints(pMat1, pMat2, self.ptsCam1, self.ptsCam2) 
+      print points3d
     else:
      print "Two cameras required for triangulation"
 
