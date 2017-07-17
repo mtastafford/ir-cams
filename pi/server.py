@@ -44,12 +44,11 @@ class websocketserver:
    print self.cams
    ###CHECK IF CAMERA HAS BEEN CALIBRATED PREVIOUSLY###
    calbFile = open("calbList.json", "r")
-   print "does it break here?"
    checker=json.loads(calbFile.read())
-   print "or here?"
-   print checker
+   #print checker
    if self.cams[client['id']]['mac'] in (checker['mac']):
     print "Found Calibrated Camera"
+    self.cams[client['id']]['id']=client['id']
     self.cams[client['id']]['X'] = checker['mac'][obj['id']]['X']
     self.cams[client['id']]['Y'] = checker['mac'][obj['id']]['Y']
     self.cams[client['id']]['Z'] = checker['mac'][obj['id']]['Z']
@@ -201,7 +200,32 @@ class websocketserver:
       self.cams[client['id']]['blobs'][a]['yloc']=str((self.tAreas[a,3]+self.tAreas[a,4])/2)
     print self.cams[client['id']]['blobs']
     if len(self.cams)>=2:
+     print "The server thinks there are %i cameras" %len(self.cams)
      print "Trying to triangulate 3d points"
+     pMat1=np.float64([[self.cams[1]['pM0'],self.cams[1]['pM1'],self.cams[1]['pM2'],self.cams[1]['pM3']],[self.cams[1]['pM4'],self.cams[1]['pM5'],self.cams[1]['pM6'],self.cams[1]['pM7']],[self.cams[1]['pM8'],self.cams[1]['pM9'],self.cams[1]['pM10'],self.cams[1]['pM11']]])
+     pMat2=np.float64([[self.cams[2]['pM0'],self.cams[2]['pM1'],self.cams[2]['pM2'],self.cams[2]['pM3']],[self.cams[2]['pM4'],self.cams[2]['pM5'],self.cams[2]['pM6'],self.cams[2]['pM7']],[self.cams[2]['pM8'],self.cams[2]['pM9'],self.cams[2]['pM10'],self.cams[2]['pM11']]])  
+     print pMat1
+     #print pMat2
+     ptsCam1 = np.zeros(shape=(1,2))
+     print ptsCam1
+     ptsCam2 = np.zeros(shape=(1,2))
+     print ptsCam2
+     if self.cams[client['id']]['id'] is 1:
+      for a in range(0,len(self.cams[client['id']]['blobs'])):
+       ptsCam1[a,0] = self.cams[client['id']]['blobs'][a]['xloc']
+       ptsCam1[a,1] = self.cams[client['id']]['blobs'][a]['yloc']
+      print ptsCam1
+      print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!CLIENT ID 1 ABOVE"
+     if self.cams[client['id']]['id'] is 2:
+      for a in range(0,len(self.cams[client['id']]['blobs'])):
+        ptsCam2[a,0] = self.cams[client['id']]['blobs'][a]['xloc']
+        ptsCam2[a,1] = self.cams[client['id']]['blobs'][a]['yloc']
+      print ptsCam2
+      print "CLIENT ID 2 ABOVE~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+#     if np.any(ptsCam1) and np.any(ptsCam2):
+#      print "what!?"
+#      points3d = cv2.triangulatePoints(pMat1, pMat2, ptsCam1, ptsCam2)
+#      print points3d
     else:
      print "Two cameras required for triangulation"
 
