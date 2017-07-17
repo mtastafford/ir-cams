@@ -28,9 +28,11 @@ class websocketserver:
  
  # Called when a client sends a message
  def message_received(self, client, server, message):
-  if len(message) > 1000:
+  if len(message) > 1000 and 'camera' in message:
    message = message[:500]+'..'
   obj = json.loads(message)
+  if 'calibrate' in obj:
+   print "Store X as %s " % obj['calibrate']['X'], "and"
   #set client type in cams{} to match client ID
   ##check who sent message based on 'type' in JSON data (camera, beacon, etc.) then parse for client type
   if 'camera' in obj.values():
@@ -42,36 +44,39 @@ class websocketserver:
    print self.cams
    ###CHECK IF CAMERA HAS BEEN CALIBRATED PREVIOUSLY###
    calbFile = open("calbList.json", "r")
+   print "does it break here?"
    checker=json.loads(calbFile.read())
+   print "or here?"
    print checker
-   if self.cams[client['id']]['mac'] in checker.values():
+   if self.cams[client['id']]['mac'] in (checker['mac']):
     print "Found Calibrated Camera"
-    self.cams[client['id']]['X'] = checker['X']
-    self.cams[client['id']]['Y'] = checker['Y']
-    self.cams[client['id']]['Z'] = checker['Z']
-    self.cams[client['id']]['pM0']=checker['pM0']
-    self.cams[client['id']]['pM1']=checker['pM1']
-    self.cams[client['id']]['pM2']=checker['pM2']
-    self.cams[client['id']]['pM3']=checker['pM3']
-    self.cams[client['id']]['pM4']=checker['pM4']
-    self.cams[client['id']]['pM5']=checker['pM5']
-    self.cams[client['id']]['pM6']=checker['pM6']
-    self.cams[client['id']]['pM7']=checker['pM7']
-    self.cams[client['id']]['pM8']=checker['pM8']
-    self.cams[client['id']]['pM9']=checker['pM9']
-    self.cams[client['id']]['pM10']=checker['pM10']
-    self.cams[client['id']]['pM11']=checker['pM11']    
+    self.cams[client['id']]['X'] = checker['mac'][obj['id']]['X']
+    self.cams[client['id']]['Y'] = checker['mac'][obj['id']]['Y']
+    self.cams[client['id']]['Z'] = checker['mac'][obj['id']]['Z']
+    self.cams[client['id']]['pM0'] = checker['mac'][obj['id']]['pM0']
+    self.cams[client['id']]['pM1']= checker['mac'][obj['id']]['pM1']
+    self.cams[client['id']]['pM2']= checker['mac'][obj['id']]['pM2']
+    self.cams[client['id']]['pM3']= checker['mac'][obj['id']]['pM3']
+    self.cams[client['id']]['pM4']= checker['mac'][obj['id']]['pM4']
+    self.cams[client['id']]['pM5']= checker['mac'][obj['id']]['pM5']
+    self.cams[client['id']]['pM6']= checker['mac'][obj['id']]['pM6']
+    self.cams[client['id']]['pM7']= checker['mac'][obj['id']]['pM7']
+    self.cams[client['id']]['pM8']= checker['mac'][obj['id']]['pM8']
+    self.cams[client['id']]['pM9']= checker['mac'][obj['id']]['pM9']
+    self.cams[client['id']]['pM10']= checker['mac'][obj['id']]['pM10']
+    self.cams[client['id']]['pM11']= checker['mac'][obj['id']]['pM11']    
     self.cams[client['id']]['calibrated']=1
    ###check for matching MAC address
   if 'point2D' in obj.values(): #if message from camera, it is found blobs.
    ####################CALIBRATE CAMERA IF NOT DONE YET######################################## 
    if self.cams[client['id']]['calibrated']==0:   ##check for calibration if point received
-    calibPts = np.float64([[0,0,1],[1,0,1],[1,1,1],[0,1,1],[-1,1,1],[-1,0,1],[-1,-1,1],[0,-1,1],[1,-1,1]])
+    #calibPts = np.float64([[0,0,1],[1,0,1],[1,1,1],[0,1,1],[-1,1,1],[-1,0,1],[-1,-1,1],[0,-1,1],[1,-1,1]])
+    calibPts = np.float64([[0,0,0],[5.125,-3.875,0],[-5.125,-3.875,0],[-5.125,3.875,0],[5.125,3.875,0]])
     #user to physically move beacon to specific locations to calibrate room
     if self.calibCount <= 0:
      if self.ticker <= 0:
       print "Camera Calibration X-Y points"
-      self.Points2D = np.zeros(shape=(9,len(self.cams)*2))
+      self.Points2D = np.zeros(shape=(5,len(self.cams)*2))
       print self.Points2D
       print 'Move beacon to %d' %calibPts[self.calibCount,0], 'm, %d' %calibPts[self.calibCount,1], 'm, %d' % calibPts[self.calibCount,2], 'm location and press enter to store 2d point'
       raw_input("....")
@@ -82,7 +87,7 @@ class websocketserver:
      self.calibCount += 1
      self.ticker = 0
 
-    if self.calibCount >= 9:
+    if self.calibCount >= 5:
      self.Points2D[self.calibCount-1,0] = obj['blobs'][0]['xloc']
      self.Points2D[self.calibCount-1,1] = obj['blobs'][0]['yloc']
      print self.Points2D
@@ -116,7 +121,7 @@ class websocketserver:
       json.dump(self.cams[client['id']], outfile)
      print "Calibrated!"
 
-    if self.calibCount >= 1 and self.calibCount <= 8:
+    if self.calibCount >= 1 and self.calibCount <= 4:
      if self.ticker <= 0 or self.ticker >= 500:
       self.Points2D[self.calibCount-1,0] = obj['blobs'][0]['xloc']
       self.Points2D[self.calibCount-1,1] = obj['blobs'][0]['yloc']
@@ -131,8 +136,7 @@ class websocketserver:
      self.ticker += 1
      print self.ticker
   ####################################################################################
-   for i in self.cams:
-    self.cams[i]['blobs'].clear()
+   self.cams[client['id']]['blobs'].clear()
    found = np.zeros(shape=(len(obj['blobs']),5), dtype=int)
   #####################################################################################
   #print(self.tAreas)
