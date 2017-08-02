@@ -81,20 +81,10 @@ class websocketserver:
      self.cams[client['id']]['pM10'] = checker[cameras]['pM10']
      self.cams[client['id']]['pM11'] = checker[cameras]['pM11']    
      self.cams[client['id']]['calibrated']=1
-     self.cams[client['id']]['k0']=checker[cameras]['k0']
-     self.cams[client['id']]['k1']=checker[cameras]['k1']
-     self.cams[client['id']]['k2']=checker[cameras]['k2']
-     self.cams[client['id']]['k3']=checker[cameras]['k3']
-     self.cams[client['id']]['k4']=checker[cameras]['k4']
-     self.cams[client['id']]['cM0']=checker[cameras]['cM0']
-     self.cams[client['id']]['cM1']=checker[cameras]['cM1']
-     self.cams[client['id']]['cM2']=checker[cameras]['cM2']
-     self.cams[client['id']]['cM3']=checker[cameras]['cM3']
-     self.cams[client['id']]['cM4']=checker[cameras]['cM4']
-     self.cams[client['id']]['cM5']=checker[cameras]['cM5']
-     self.cams[client['id']]['cM6']=checker[cameras]['cM6']
-     self.cams[client['id']]['cM7']=checker[cameras]['cM7']
-     self.cams[client['id']]['cM8']=checker[cameras]['cM8']
+
+
+
+
 
   if 'calibrate' in obj.values():
    for cameras in self.cams:
@@ -172,9 +162,8 @@ class websocketserver:
      self.Points2D = np.concatenate((self.Points2D, c), axis = 0)
     print self.Points2D
     print self.calbPts
-
-    cameraMatrix = np.float64([[self.cams[cameras]['cM0'],self.cams[cameras]['cM1'],self.cams[cameras]['cM2']], [self.cams[cameras]['cM3'],self.cams[cameras]['cM4'],self.cams[cameras]['cM5']], [self.cams[cameras]['cM6'],self.cams[cameras]['cM7'],self.cams[cameras]['cM8']]])
-    distCoeff = np.float64([self.cams[cameras]['k0'],self.cams[cameras]['k1'],self.cams[cameras]['k2'],self.cams[cameras]['k3'],self.cams[cameras]['k4']])
+    cameraMatrix = np.float64([[247.9139798, 0., 155.30251177], [0., 248.19822494, 100.74688813], [0., 0., 1.]])
+    distCoeff = np.float64([-0.45977769, 0.29782977, -0.00162724, 0.00046035])
     print "debug1"
     ret, rvec, tvec = cv2.solvePnP(self.calbPts,self.Points2D,cameraMatrix,distCoeff)
     print "debug2"
@@ -202,7 +191,6 @@ class websocketserver:
     self.cams[cameras]['pM10']=str(projectionMatrix[1,3])
     self.cams[cameras]['pM11']=str(projectionMatrix[2,3])
     self.cams[cameras]['calibrated']=1
-
     print "Calibrated camera %s" % self.cams[cameras]['mac']
    with open('calbList.json', 'w') as outfile:
     json.dump(self.cams, outfile)
