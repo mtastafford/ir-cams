@@ -81,9 +81,77 @@ class websocketserver:
      self.cams[client['id']]['pM10'] = checker[cameras]['pM10']
      self.cams[client['id']]['pM11'] = checker[cameras]['pM11']    
      self.cams[client['id']]['calibrated']=1
+
+
+
+
+
+  if 'calibrate' in obj.values():
+   for cameras in self.cams:
+    self.calbPts = np.empty(shape=(0,3), dtype = float)
+    self.Points2D = np.empty(shape=(0,2), dtype = float)
+    for point in self.calb3D:
+     p3d = np.array([[float(self.calb3D[point]['X']),float(self.calb3D[point]['Y']),float(self.calb3D[point]['Z'])]])
+     p2d = np.array([[float(self.cams[cameras]['CalbPts'][point]['X']),float(self.cams[cameras]['CalbPts'][point]['Y'])]])
+     self.calbPts = np.append(self.calbPts, p3d, 0)
+     self.Points2D = np.append(self.Points2D, p2d, 0)
+     print self.Points2D
+     print self.calbPts
+#    cameraMatrix = np.float64([[247.9139798, 0., 155.30251177], [0., 248.19822494, 100.74688813], [0., 0., 1.]])
+#    distCoeff = np.float64([-0.45977769, 0.29782977, -0.00162724, 0.00046035])
+    print "debug1"
+    w = 319
+    h = 199
+    size = (w,h)
+    self.calbPts = (self.calbPts).astype('float32')
+    self.Points2D = (self.Points2D).astype('float32')
+    ret, cameraMatrix, distCoeff, rvec, tvec = cv2.calibrateCamera([self.calbPts],[self.Points2D],size)
+    rvec = np.array([[rvec[0][0,0]],[rvec[0][1,0]],[rvec[0][2,0]]])
+    tvec = np.array([[tvec[0][0,0]],[tvec[0][1,0]],[tvec[0][2,0]]])
+    rotM_cam =  cv2.Rodrigues(rvec)[0]
+    pose = -np.matrix(rotM_cam).T * np.matrix(tvec)
+    camMatrix = np.append(cv2.Rodrigues(rvec)[0], tvec, 1)
+    projectionMatrix = np.dot(cameraMatrix, camMatrix)
+    self.cams[cameras]['X'] = str(pose[0,0])
+    self.cams[cameras]['Y'] = str(pose[1,0])
+    self.cams[cameras]['Z'] = str(pose[2,0])
+    self.cams[cameras]['pM0']=str(projectionMatrix[0,0])
+    self.cams[cameras]['pM1']=str(projectionMatrix[1,0])
+    self.cams[cameras]['pM2']=str(projectionMatrix[2,0])
+    self.cams[cameras]['pM3']=str(projectionMatrix[0,1])
+    self.cams[cameras]['pM4']=str(projectionMatrix[1,1])
+    self.cams[cameras]['pM5']=str(projectionMatrix[2,1])
+    self.cams[cameras]['pM6']=str(projectionMatrix[0,2])
+    self.cams[cameras]['pM7']=str(projectionMatrix[1,2])
+    self.cams[cameras]['pM8']=str(projectionMatrix[2,2])
+    self.cams[cameras]['pM9']=str(projectionMatrix[0,3])
+    self.cams[cameras]['pM10']=str(projectionMatrix[1,3])
+    self.cams[cameras]['pM11']=str(projectionMatrix[2,3])
+    self.cams[cameras]['calibrated']=1
+    self.cams[cameras]['k0']=str(distCoeff[0,0])
+    self.cams[cameras]['k1']=str(distCoeff[0,1]) 
+    self.cams[cameras]['k2']=str(distCoeff[0,2]) 
+    self.cams[cameras]['k3']=str(distCoeff[0,3]) 
+    self.cams[cameras]['k4']=str(distCoeff[0,4]) 
+    self.cams[cameras]['cM0']=str(cameraMatrix[0,0])
+    self.cams[cameras]['cM1']=str(cameraMatrix[0,1])
+    self.cams[cameras]['cM2']=str(cameraMatrix[0,2])
+    self.cams[cameras]['cM3']=str(cameraMatrix[1,0])
+    self.cams[cameras]['cM4']=str(cameraMatrix[1,1])
+    self.cams[cameras]['cM5']=str(cameraMatrix[1,2])
+    self.cams[cameras]['cM6']=str(cameraMatrix[2,0])
+    self.cams[cameras]['cM7']=str(cameraMatrix[2,1])
+    self.cams[cameras]['cM8']=str(cameraMatrix[2,2])
+    
+    print "Calibrated camera %s" % self.cams[cameras]['mac']
+   with open('calbSave.json', 'w') as outfile:
+    json.dump(self.cams, outfile)
+    print "Wrote Camera info to File!!"
+
+
 #######################DO NOT DELETE THE CALIBRATION STUFF BELOW############################
   
-  if 'calibrate' in obj.values():
+  if 'solve_cams' in obj.values():
    for cameras in self.cams:
     self.calbPts = np.empty((0,3), float)
     self.Points2D = np.empty((0,2), float)
@@ -103,6 +171,9 @@ class websocketserver:
     pose = -np.matrix(rotM_cam).T * np.matrix(tvec)
     camMatrix = np.append(cv2.Rodrigues(rvec)[0], tvec, 1)
     projectionMatrix = np.dot(cameraMatrix, camMatrix)
+    print camMatrix
+    print tvec
+    print projectionMatrix
     print "does it break here?"
     self.cams[cameras]['X'] = str(pose[0,0])
     self.cams[cameras]['Y'] = str(pose[1,0])
@@ -126,6 +197,7 @@ class websocketserver:
     print "Wrote Camera info to File!!"
 ##############################################################################################
   ####################################################################################
+
   if 'point2D' in obj.values(): #if message from camera, it is found blobs.
    ####################CALIBRATE CAMERA IF NOT DONE YET######################################## 
    self.cams[client['id']]['blobs'].clear()
@@ -135,7 +207,7 @@ class websocketserver:
     self.cams[client['id']]['CalbPts'][currSize]={}
     self.cams[client['id']]['CalbPts'][currSize]['X']=obj['blobs'][0]['xloc']
     self.cams[client['id']]['CalbPts'][currSize]['Y']=obj['blobs'][0]['yloc']
-    self.cams[client['id']]['storenext']=0
+    self.cams[client['id']]['storenext']=0  
    #################################IF CAMERA IS CALIRATED, TRACK BLOBS###############
    if self.cams[client['id']]['calibrated'] == 1: ####ONLY RUNS IF CAMERA SENDING MESSAGE HAS BEEN CALIBRATED###
     for i in range(0,len(obj['blobs'])): #add all found blobs i to camera blobs
@@ -166,19 +238,25 @@ class websocketserver:
       p3d = p3d.reshape(-1,3)
       print p3d
       #Make an array from the array resulting in [1,N,3]
-#      p3d = np.array([p3d])
-#      print p3d
+      p3d = np.array([p3d])
       #Reshape camera matrix to a 4x4 for input into perspectiveTransform 
       #we'll just add zeros and a one to the last row.
       # from the TestTriangualtion function @, 
       #https://github.com/MasteringOpenCV/code/blob/master/Chapter4_StructureFromMotion/FindCameraMatrices.cpp
-#      P_24x4 = np.resize(pMat1,(4,4))
-#      P_24x4[3,0] = 0
-#      P_24x4[3,1] = 0
-#      P_24x4[3,2] = 0
-#      P_24x4[3,3] = 1 
-#      points3d_proj = cv2.perspectiveTransform(p3d, P_24x4)
-      #print points3d_proj
+      A_24x4 = np.resize(pMat1,(4,4))
+      A_24x4[3,0] = 0
+      A_24x4[3,1] = 0
+      A_24x4[3,2] = 0
+      A_24x4[3,3] = 1 
+      points3d_proj = cv2.perspectiveTransform(p3d, A_24x4)
+      B_24x4 = np.resize(pMat2,(4,4))
+      B_24x4[3,0] = 0
+      B_24x4[3,1] = 0
+      B_24x4[3,2] = 0
+      B_24x4[3,3] = 1
+      points3d_proj_2 = cv2.perspectiveTransform(p3d, B_24x4) 
+      print points3d_proj
+      print points3d_proj_2
     else:
      print "Two cameras required for triangulation"
 
