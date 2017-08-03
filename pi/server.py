@@ -190,16 +190,16 @@ class websocketserver:
     self.cams[cameras]['Y'] = str(pose[1,0])
     self.cams[cameras]['Z'] = str(pose[2,0])
     self.cams[cameras]['pM0']=str(projectionMatrix[0,0])
-    self.cams[cameras]['pM1']=str(projectionMatrix[1,0])
-    self.cams[cameras]['pM2']=str(projectionMatrix[2,0])
-    self.cams[cameras]['pM3']=str(projectionMatrix[0,1])
-    self.cams[cameras]['pM4']=str(projectionMatrix[1,1])
-    self.cams[cameras]['pM5']=str(projectionMatrix[2,1])
-    self.cams[cameras]['pM6']=str(projectionMatrix[0,2])
-    self.cams[cameras]['pM7']=str(projectionMatrix[1,2])
-    self.cams[cameras]['pM8']=str(projectionMatrix[2,2])
-    self.cams[cameras]['pM9']=str(projectionMatrix[0,3])
-    self.cams[cameras]['pM10']=str(projectionMatrix[1,3])
+    self.cams[cameras]['pM1']=str(projectionMatrix[0,1])
+    self.cams[cameras]['pM2']=str(projectionMatrix[0,2])
+    self.cams[cameras]['pM3']=str(projectionMatrix[0,3])
+    self.cams[cameras]['pM4']=str(projectionMatrix[1,0])
+    self.cams[cameras]['pM5']=str(projectionMatrix[1,1])
+    self.cams[cameras]['pM6']=str(projectionMatrix[1,2])
+    self.cams[cameras]['pM7']=str(projectionMatrix[1,3])
+    self.cams[cameras]['pM8']=str(projectionMatrix[2,0])
+    self.cams[cameras]['pM9']=str(projectionMatrix[2,1])
+    self.cams[cameras]['pM10']=str(projectionMatrix[2,2])
     self.cams[cameras]['pM11']=str(projectionMatrix[2,3])
     self.cams[cameras]['calibrated']=1
 
@@ -226,29 +226,25 @@ class websocketserver:
      self.cams[client['id']]['blobs'][i]={}
      self.cams[client['id']]['blobs'][i]['xloc']=obj['blobs'][i]['xloc']
      self.cams[client['id']]['blobs'][i]['yloc']=obj['blobs'][i]['yloc']
-    if len(self.cams)>=2: ##if there are at least 2 cameras, try to triangulate
+    if len(self.cams[1]['blobs']) >= 1 and len(self.cams[2]['blobs']) >=1: ##if there are at least 2 cameras, try to triangulate
      pMat1=np.float64([[self.cams[1]['pM0'],self.cams[1]['pM1'],self.cams[1]['pM2'],self.cams[1]['pM3']],[self.cams[1]['pM4'],self.cams[1]['pM5'],self.cams[1]['pM6'],self.cams[1]['pM7']],[self.cams[1]['pM8'],self.cams[1]['pM9'],self.cams[1]['pM10'],self.cams[1]['pM11']]])
      pMat2=np.float64([[self.cams[2]['pM0'],self.cams[2]['pM1'],self.cams[2]['pM2'],self.cams[2]['pM3']],[self.cams[2]['pM4'],self.cams[2]['pM5'],self.cams[2]['pM6'],self.cams[2]['pM7']],[self.cams[2]['pM8'],self.cams[2]['pM9'],self.cams[2]['pM10'],self.cams[2]['pM11']]])  
-     if self.cams[client['id']]['id'] is 1:
-      #for a in range(0,len(self.cams[client['id']]['blobs'])):
-      self.ptsCam1[0,0] = self.cams[client['id']]['blobs'][0]['xloc']
-      self.ptsCam1[1,0] = self.cams[client['id']]['blobs'][0]['yloc']
-#      print self.ptsCam1
-     if self.cams[client['id']]['id'] is 2:
-      #for a in range(0,len(self.cams[client['id']]['blobs'])):
-      self.ptsCam2[0,0] = self.cams[client['id']]['blobs'][0]['xloc']
-      self.ptsCam2[1,0] = self.cams[client['id']]['blobs'][0]['yloc']
-#      print self.ptsCam2
+     self.ptsCam1[0,0] = self.cams[1]['blobs'][0]['xloc']
+     self.ptsCam1[1,0] = self.cams[1]['blobs'][0]['yloc']
+#     print self.ptsCam1
+     self.ptsCam2[0,0] = self.cams[2]['blobs'][0]['xloc']
+     self.ptsCam2[1,0] = self.cams[2]['blobs'][0]['yloc']
+#     print self.ptsCam2
      if np.any(self.ptsCam1) and np.any(self.ptsCam2):
 #      print "TRIANGULATING"
       points3d = cv2.triangulatePoints(pMat1, pMat2, self.ptsCam1, self.ptsCam2) 
 #      print points3d
 #      print "------------was the output of triangulation----------------"
-      #Grab the first three columns from the results to make a 3-N array
-      p3d = np.array([points3d[0],points3d[1],points3d[2]])
+#      Grab the first three columns from the results to make a 3-N array and divide by 'w'
+      p3d = np.array([(points3d[0]/points3d[3]),(points3d[1]/points3d[3]),(points3d[2]/points3d[3])])
       #Reshape to make a N-3 array
       p3d = p3d.reshape(-1,3)
-      print p3d
+      print p3d, "Triangulation results"
       #Make an array from the array resulting in [1,N,3]
       p3d = np.array([p3d])
       #Reshape camera matrix to a 4x4 for input into perspectiveTransform 
@@ -267,8 +263,8 @@ class websocketserver:
       B_24x4[3,2] = 0
       B_24x4[3,3] = 1
       points3d_proj_2 = cv2.perspectiveTransform(p3d, B_24x4) 
-      print points3d_proj
-      print points3d_proj_2
+#      print points3d_proj, "Transformed no.1"
+#      print points3d_proj_2, "Transformed no.2"
     else:
      print "Two cameras required for triangulation"
 
