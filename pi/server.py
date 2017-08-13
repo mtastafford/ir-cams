@@ -7,6 +7,7 @@ from websocket_server import WebsocketServer
 
 class websocketserver:
  numcams=0
+ numusers=0
  nBlobs = 0
  cams = {}
  beacons = {}
@@ -49,6 +50,18 @@ class websocketserver:
     print self.cams[addresses]
   #set client type in cams{} to match client ID
   ##check who sent message based on 'type' in JSON data (camera, beacon, etc.) then parse for client type
+  if 'user' in obj.values():
+   if client['id'] in (self.users).values():
+    print 'Client Found'
+    print 'Updating position'
+    pose = json.dumps(self.users)
+    server.send_message(client,pose)
+   else:
+    print 'User has connected. Creating entity!'
+    self.users['X']=0
+    self.users['Y']=0
+    self.users['Z']=0
+    self.users['ID']=client['id']
   if 'camera' in obj.values():
    self.numcams +=1
    self.cams[client['id']]={}
@@ -57,7 +70,6 @@ class websocketserver:
    self.cams[client['id']]['storenext']=0
    self.cams[client['id']]['CalbPts']={}
    self.cams[client['id']]['blobs']={}
-   print self.cams
    ###CHECK IF CAMERA HAS BEEN CALIBRATED PREVIOUSLY###
    calbFile = open("calbList.json", "r")
    checker=json.loads(calbFile.read())
@@ -95,6 +107,7 @@ class websocketserver:
      self.cams[client['id']]['cM6']=checker[cameras]['cM6']
      self.cams[client['id']]['cM7']=checker[cameras]['cM7']
      self.cams[client['id']]['cM8']=checker[cameras]['cM8']
+   print self.cams
 
   if 'calibrate' in obj.values():
    for cameras in self.cams:
@@ -109,7 +122,6 @@ class websocketserver:
      print self.calbPts
 #    cameraMatrix = np.float64([[247.9139798, 0., 155.30251177], [0., 248.19822494, 100.74688813], [0., 0., 1.]])
 #    distCoeff = np.float64([-0.45977769, 0.29782977, -0.00162724, 0.00046035])
-    print "debug1"
     w = 319
     h = 199
     size = (w,h)
@@ -175,17 +187,17 @@ class websocketserver:
 
     cameraMatrix = np.float64([[self.cams[cameras]['cM0'],self.cams[cameras]['cM1'],self.cams[cameras]['cM2']], [self.cams[cameras]['cM3'],self.cams[cameras]['cM4'],self.cams[cameras]['cM5']], [self.cams[cameras]['cM6'],self.cams[cameras]['cM7'],self.cams[cameras]['cM8']]])
     distCoeff = np.float64([self.cams[cameras]['k0'],self.cams[cameras]['k1'],self.cams[cameras]['k2'],self.cams[cameras]['k3'],self.cams[cameras]['k4']])
-    print "debug1"
     ret, rvec, tvec = cv2.solvePnP(self.calbPts,self.Points2D,cameraMatrix,distCoeff)
-    print "debug2"
     rotM_cam =	cv2.Rodrigues(rvec)[0]
     pose = -np.matrix(rotM_cam).T * np.matrix(tvec)
     camMatrix = np.append(cv2.Rodrigues(rvec)[0], tvec, 1)
     projectionMatrix = np.dot(cameraMatrix, camMatrix)
+    print "Camera Matrix:"
     print camMatrix
+    print "Translation Vector:"
     print tvec
+    print "Projection Matrix:"
     print projectionMatrix
-    print "does it break here?"
     self.cams[cameras]['X'] = str(pose[0,0])
     self.cams[cameras]['Y'] = str(pose[1,0])
     self.cams[cameras]['Z'] = str(pose[2,0])
@@ -243,8 +255,11 @@ class websocketserver:
 #      Grab the first three columns from the results to make a 3-N array and divide by 'w'
       p3d = np.array([(points3d[0]/points3d[3]),(points3d[1]/points3d[3]),(points3d[2]/points3d[3])])
       #Reshape to make a N-3 array
+      self.users['X'] = p3d[0,0]
+      self.users['Y'] = p3d[1,0]
+      self.users['Z'] = p3d[2,0]
       p3d = p3d.reshape(-1,3)
-      print p3d, "Triangulation results"
+      print p3d
       #Make an array from the array resulting in [1,N,3]
       p3d = np.array([p3d])
       #Reshape camera matrix to a 4x4 for input into perspectiveTransform 
@@ -267,6 +282,7 @@ class websocketserver:
 #      print points3d_proj_2, "Transformed no.2"
     else:
      print "Two cameras required for triangulation"
+    
 
  def __init__(self, host='0.0.0.0'):
   self.server = WebsocketServer(self.port, host)
